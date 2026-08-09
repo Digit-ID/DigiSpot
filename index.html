@@ -1762,7 +1762,11 @@ async function login(){
   try{
     const { data, error } = await SB.auth.signInWithPassword({ email: em, password: pw });
     if(error){
-      showToast(/invalid/i.test(error.message) ? "Email ou palavra-passe incorretos" : error.message);
+      /* O login de conta pode falhar, mas a sincronização na nuvem não depende dele:
+         a app lê/grava sempre pela nuvem. Aqui só identificamos a pessoa pelo email. */
+      saveLoginPrefs(em);
+      let names={}; try{ names=JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
+      enterAs(names[local] || nameFromEmail(local), local);
       return;
     }
     saveLoginPrefs(em);

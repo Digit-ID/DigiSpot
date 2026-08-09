@@ -18,7 +18,7 @@
     --ok:#3E9E70; --warn-bg:#FBF3E2; --warn-bd:#EBD9AE; --warn-tx:#7A5B14;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  body{margin:0; font-family:Calibri,'Segoe UI',-apple-system,sans-serif; background:var(--bg); color:var(--navy); min-height:100vh; padding-bottom:76px;}
+  body{margin:0; font-family:Calibri,'Segoe UI',-apple-system,sans-serif; background:var(--bg); color:var(--navy); min-height:100vh; padding-bottom:76px; overflow-x:hidden;}
   button{font-family:inherit; cursor:pointer;}
   input,select{font-family:inherit;}
   ::-webkit-scrollbar{display:none;}
@@ -41,7 +41,8 @@
   .login-sub{font-size:14.5px; color:#5C6B7E; margin:0 0 18px;}
   .email-row{display:flex; gap:8px; margin-bottom:14px;}
   .email-row input{margin-bottom:0; flex:1; min-width:0;}
-  .email-dom{flex:0 0 auto; display:flex; align-items:center; padding:0 14px; border:1.5px solid var(--line); border-radius:12px; background:#F4F7FD; color:var(--indigo); font-size:14px; font-weight:700;}
+  .email-dom{flex:0 0 auto; display:flex; align-items:center; padding:0 14px; border:1.5px solid var(--line); border-radius:12px; background:#F4F7FD; color:var(--indigo); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .email-dom:active{background:var(--indigo); color:#fff; border-color:var(--indigo);}
   .pass-wrap{position:relative; margin-bottom:12px;}
   .pass-wrap input{margin-bottom:0; padding-right:46px;}
   .eye-btn{position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--mist); padding:6px; display:flex;}
@@ -1711,7 +1712,7 @@ function setOccTab(t){ occTab=t; render(); }
 function setDate(iso){ dateSel=iso; render(); }
 function setAttrFilter(a){ attrFilter=a; render(); }
 let mapZoom = 1;
-function setZoom(d){ mapZoom = Math.max(0.55, Math.min(1.6, Math.round((mapZoom+d)*100)/100)); render(); }
+function setZoom(d){ mapZoom = Math.max(1, Math.min(3, Math.round((mapZoom+d)*100)/100)); render(); }
 function setAdmTool(t){ admTool=t; render(); }
 const LS_LOGIN = "digispot-login-v1";
 const LS_NAMES = "digispot-email-names-v1";
@@ -1719,6 +1720,11 @@ const SB = window.__sb || null;
 function rememberedEmail(){ try{ return (JSON.parse(localStorage.getItem(LS_LOGIN))||{}).email||""; }catch(e){ return ""; } }
 function nameFromEmail(em){ return em.split(/[._\-]+/).filter(Boolean).map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(" "); }
 function togglePass(){ const p=document.getElementById("passInput"); p.type = p.type==="password" ? "text" : "password"; }
+function addDomain(){
+  const el = document.getElementById("emailInput"); let v=(el.value||"").trim();
+  if(!v.includes("@")) v = v + "@digit.com.pt";
+  el.value = v; document.getElementById("passInput").focus();
+}
 function authName(u){
   const m = (u && u.user_metadata) || {};
   return (m.full_name || m.name || m.display_name || nameFromEmail((u&&u.email||"").split("@")[0])).trim();
@@ -1726,7 +1732,7 @@ function authName(u){
 function fullEmail(raw){ raw=(raw||"").trim().toLowerCase(); return raw.includes("@") ? raw : raw+"@digit.com.pt"; }
 function saveLoginPrefs(em){
   if(document.getElementById("rememberChk") && document.getElementById("rememberChk").checked)
-    localStorage.setItem(LS_LOGIN, JSON.stringify({email:em.split("@")[0]}));
+    localStorage.setItem(LS_LOGIN, JSON.stringify({email:em}));
   else localStorage.removeItem(LS_LOGIN);
 }
 async function enterAs(n, em){
@@ -1905,7 +1911,7 @@ function render(){
       '<div class="login-card">' +
       '<h1 class="login-h1">Bem-vindo de volta</h1>' +
       '<p class="login-sub">Entra na tua conta DigiSpot.</p>' +
-      '<div class="email-row"><input id="emailInput" type="email" placeholder="Email" autocomplete="username" value="'+esc(rememberedEmail())+'"><span class="email-dom">@digit.com.pt</span></div>' +
+      '<div class="email-row"><input id="emailInput" type="email" placeholder="Email" autocomplete="username" value="'+esc(rememberedEmail())+'"><button type="button" class="email-dom" onclick="addDomain()">@digit.com.pt</button></div>' +
       '<div class="pass-wrap"><input id="passInput" type="password" placeholder="Palavra-passe" autocomplete="current-password"><button type="button" class="eye-btn" onclick="togglePass()" aria-label="Mostrar palavra-passe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>' +
       '<label class="remember"><input type="checkbox" id="rememberChk"'+(rememberedEmail()?' checked':'')+'> Lembrar os meus dados de acesso</label>' +
       '<div id="nameStep" style="display:none"><p class="login-sub" style="margin:0 0 8px">Confirma o teu nome — é assim que os colegas te veem:</p><input id="nameInput" autocomplete="name" style="margin-bottom:14px"></div>' +
@@ -2295,7 +2301,7 @@ function mapHtml(office, opts){
     '<button onclick="setZoom(-0.15)">−</button><span>'+Math.round(mapZoom*100)+'%</span><button onclick="setZoom(0.15)">+</button>' +
     '</div>';
   return '<div class="map-wrap">'+zoomCtl+
-    '<div class="map-scroll"><div style="width:'+Math.round(W*mapZoom)+'px; margin:0 auto">' +
+    '<div class="map-scroll"><div style="width:calc(min(100%, '+W+'px) * '+mapZoom+'); margin:0 auto">' +
     '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block; background:#FBFAF7; border-radius:12px; user-select:none" xmlns="http://www.w3.org/2000/svg">'+el+'</svg>' +
     '</div></div></div>';
 }
@@ -3805,6 +3811,10 @@ function renderAdmin(app){
 /* ── Arranque ── */
 (async function init(){
   applyTheme();
+  let _rz; window.addEventListener("resize", ()=>{
+    clearTimeout(_rz);
+    _rz = setTimeout(()=>{ if(user && !modalState) render(); }, 200);
+  });
   await restoreSession();
   await loadAll();
   if(user && profiles[user] && profiles[user].defaultOffice && getOffice(profiles[user].defaultOffice)) officeId = profiles[user].defaultOffice;

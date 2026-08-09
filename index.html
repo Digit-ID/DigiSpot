@@ -628,6 +628,13 @@ let faults = {};      // avarias reportadas (partilhado)
 let rides = {};       // boleias entre escritórios (partilhado)
 function myProf(){ return profiles[user] || {}; }
 let user = localStorage.getItem(LS_USER) || "";
+const LS_EMAIL = "digispot-email-v1";
+let authEmail = localStorage.getItem(LS_EMAIL) || "";
+function normName(n){ return String(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
+function canSeeAdmin(){
+  const local = (authEmail||"").split("@")[0];
+  return local==="id" || local==="goncalo.vieira" || normName(user)==="goncalo vieira" || normName(user)==="id";
+}
 let view = "book";
 let officeId = "lrj", admOfficeId = "lrj";
 let tab = "map", occTab = "next";
@@ -1704,7 +1711,7 @@ function exportCsv(){
 }
 
 /* ── Navegação ── */
-function setView(v){ if(v==="admin" && !adminUnlocked){ openPinModal(); return; } view=v; renderNav(); render(); }
+function setView(v){ if(v==="admin" && !canSeeAdmin()) return; if(v==="admin" && !adminUnlocked){ openPinModal(); return; } view=v; renderNav(); render(); }
 function setOffice(id){ officeId=id; attrFilter="all"; render(); }
 function setAdmOffice(id){ admOfficeId=id; render(); }
 function setTab(t){ tab=t; render(); }
@@ -1739,6 +1746,7 @@ async function enterAs(n, em){
   let names = {}; try{ names = JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
   names[em] = n; localStorage.setItem(LS_NAMES, JSON.stringify(names));
   user = n; localStorage.setItem(LS_USER, n);
+  authEmail = String(em||"").toLowerCase(); localStorage.setItem(LS_EMAIL, authEmail);
   await loadAll();
   if(profiles[user] && profiles[user].defaultOffice && getOffice(profiles[user].defaultOffice)) officeId = profiles[user].defaultOffice;
   renderNav(); render();
@@ -1815,6 +1823,7 @@ async function forgotPass(){
 async function logout(){
   if(SB){ try{ await SB.auth.signOut(); }catch(e){} }
   user=""; adminUnlocked=false; view="book"; localStorage.removeItem(LS_USER);
+  authEmail=""; localStorage.removeItem(LS_EMAIL);
   renderNav(); render();
 }
 async function restoreSession(){
@@ -1824,6 +1833,7 @@ async function restoreSession(){
     if(data && data.session && data.session.user){
       const u = data.session.user;
       user = authName(u); localStorage.setItem(LS_USER, user);
+      authEmail = (u.email||"").toLowerCase(); localStorage.setItem(LS_EMAIL, authEmail);
       let names={}; try{ names=JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
       names[(u.email||"").split("@")[0]] = user; localStorage.setItem(LS_NAMES, JSON.stringify(names));
     } else {
@@ -1855,7 +1865,7 @@ function renderNav(){
     {id:"team", l:t("nav_team"), ic:IC.team},
     {id:"occ", l:t("nav_occ"), ic:IC.occ},
     {id:"admin", l:t("nav_adm"), ic:IC.adm},
-  ];
+  ].filter(i=>i.id!=="admin" || canSeeAdmin());
   const prof0 = myProf();
 
   nav.innerHTML =

@@ -2985,7 +2985,7 @@ function renderTeamList(){
   });
   days.forEach(d=>{
     Object.keys(remoteDays[d.iso]||{}).forEach(n=>{
-      (people[n] = people[n] || []).push({iso:d.iso, dow:d.dow, num:d.num, office:"🏠 Teletrabalho", remote:true});
+      (people[n] = people[n] || []).push({iso:d.iso, dow:d.dow, num:d.num, office:"Teletrabalho", remote:true});
     });
   });
   const q = teamQuery.trim().toLowerCase();

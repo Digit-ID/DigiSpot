@@ -626,6 +626,8 @@ let profile = null;   // {seatId, period} — lugar habitual (guardado neste dis
 let profiles = {};    // perfis editáveis por utilizador (partilhado)
 let faults = {};      // avarias reportadas (partilhado)
 let rides = {};       // boleias entre escritórios (partilhado)
+let remoteDays = {};   // teletrabalho {iso:{nome:{ts}}} (partilhado)
+const LS_REMOTE = "digispot-remote-v1";
 function myProf(){ return profiles[user] || {}; }
 let user = localStorage.getItem(LS_USER) || "";
 const LS_EMAIL = "digispot-email-v1";
@@ -752,6 +754,13 @@ function describeSpot(key){
 function seatDay(day, sid){ return { full:day[sid], am:day[sid+"|am"], pm:day[sid+"|pm"] }; }
 function occupantOf(b){ return b.visitor ? b.visitor : b.name; }
 function canManage(b){ return b && (b.name===user || b.by===user); }
+function isRemote(iso, name){ return !!(remoteDays[iso] && remoteDays[iso][name||user]); }
+function toggleRemote(iso){
+  const d = remoteDays[iso] = remoteDays[iso] || {};
+  if(d[user]){ delete d[user]; if(!Object.keys(d).length) delete remoteDays[iso]; showToast("Teletrabalho removido"); }
+  else { d[user] = {ts:Date.now()}; showToast("Teletrabalho marcado 🏠"); }
+  saveAll(); render(); if(modalState) renderModal();
+}
 
 let toastTimer = null;
 function showToast(msg){
@@ -775,6 +784,7 @@ async function loadAll(){
         profiles = map.profiles || {};
         faults   = map.faults || {};
         rides    = map.rides || {};
+        remoteDays = map.remote || {};
         if(map.config) config = mergeConfig(map.config);
         remoteOk = true; window.__cloudOk = true;
       } else { window.__cloudOk = false; }
@@ -790,6 +800,7 @@ async function loadAll(){
         profiles = j.profiles || {};
         faults = j.faults || {};
         rides = j.rides || {};
+        remoteDays = j.remote || {};
         if(j.config) config = mergeConfig(j.config);
         remoteOk = true;
       }
@@ -801,6 +812,7 @@ async function loadAll(){
     try{ profiles = JSON.parse(localStorage.getItem(LS_PROFILES)) || {}; }catch(e){ profiles = {}; }
     try{ faults = JSON.parse(localStorage.getItem(LS_FAULTS)) || {}; }catch(e){ faults = {}; }
     try{ rides = JSON.parse(localStorage.getItem(LS_RIDES)) || {}; }catch(e){ rides = {}; }
+    try{ remoteDays = JSON.parse(localStorage.getItem(LS_REMOTE)) || {}; }catch(e){ remoteDays = {}; }
     try{ const c = JSON.parse(localStorage.getItem(LS_CONFIG)); if(c) config = mergeConfig(c); }catch(e){}
   }
   try{ favs = JSON.parse(localStorage.getItem(LS_FAVS)) || []; }catch(e){ favs = []; }
@@ -844,6 +856,7 @@ async function saveAll(){
   localStorage.setItem(LS_PROFILES, JSON.stringify(profiles));
   localStorage.setItem(LS_FAULTS, JSON.stringify(faults));
   localStorage.setItem(LS_RIDES, JSON.stringify(rides));
+  localStorage.setItem(LS_REMOTE, JSON.stringify(remoteDays));
   try{ localStorage.setItem(LS_CONFIG, JSON.stringify(config)); }
   catch(e){ showToast("Atenção: a planta é demasiado pesada para guardar localmente"); }
   if(SB){
@@ -854,6 +867,7 @@ async function saveAll(){
         {colecao:'profiles', dados:profiles},
         {colecao:'faults',   dados:faults},
         {colecao:'rides',    dados:rides},
+        {colecao:'remote',   dados:remoteDays},
         {colecao:'config',   dados:config},
       ];
       const { error } = await SB.from('digispot_shared').upsert(rows, {onConflict:'colecao'});
@@ -864,7 +878,7 @@ async function saveAll(){
   if(SYNC_URL){
     try{
       await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({bookings, waitlist, config, profiles, faults, rides})});
+        body:JSON.stringify({bookings, waitlist, config, profiles, faults, rides, remote:remoteDays})});
     }catch(e){ showToast("Sem ligação — gravado localmente"); }
   }
 }
@@ -1605,6 +1619,9 @@ function renderModal(){
     '<div class="opt" style="border-style:dashed" onclick="setHabitual(\''+m.spotId+'\', \''+m.period+'\')">' +
     '<span>'+(isHab?"★":"☆")+'</span>'+(isHab?t("hab_rm"):t("hab_set"))+
     '<span class="sub">'+t("p_"+m.period).split(" (")[0]+'</span></div>';
+  const isRmt = isRemote(dateSel);
+  const remoteHtml = '<div class="opt" style="border-style:dashed'+(isRmt?'; background:#EEF0FA; border-color:#C9D2F2':'')+'" onclick="toggleRemote(\''+dateSel+'\')">' +
+    '<span>🏠</span>'+(isRmt?'Em teletrabalho neste dia<span class="sub">tocar p/ desmarcar</span>':'Marcar teletrabalho neste dia<span class="sub">sem lugar</span>')+'</div>';
   const flt = faults[m.spotId];
   const faultHtml = '<div class="opt" style="border-style:dashed'+(flt?'; background:#FFF4E5; border-color:#F2CFA0':'')+'" onclick="reportFault(\''+m.spotId+'\')">' +
     '<span>⚠️</span>'+(flt ? 'Avaria: '+esc(flt.note)+'<span class="sub">'+esc(firstName(flt.by))+(flt.by===user?' · tocar p/ remover':'')+'</span>'
@@ -1633,7 +1650,7 @@ function renderModal(){
   el.innerHTML =
     '<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">' +
     '<h3>'+esc(describeSpot(m.spotId))+'</h3><div class="msub">'+fmtDate(dateSel)+'</div>' +
-    periodHtml + whoHtml + recurHtml + habHtml + faultHtml + mineHtml +
+    periodHtml + whoHtml + recurHtml + habHtml + remoteHtml + faultHtml + mineHtml +
     '<div class="modal-btns"><button class="mb-cancel" onclick="closeModal()">'+t("btn_close")+'</button>' +
     (canBook ? '<button class="mb-ok" onclick="confirmModal()">Reservar</button>' : '') +
     '</div></div></div>';
@@ -2504,6 +2521,7 @@ function renderBook(app){
     '<button class="'+(tab==="month"?"active":"")+'" onclick="setTab(\'month\')">'+t("tab_month")+'</button>' +
     '<button class="'+(tab==="park"?"active":"")+'" onclick="setTab(\'park\')">'+t("tab_park")+'</button>' +
     '<button class="'+(tab==="room"?"active":"")+'" onclick="setTab(\'room\')">'+t("tab_room")+'</button>' +
+    '<button class="'+(tab==="remote"?"active":"")+'" onclick="setTab(\'remote\')">Remoto</button>' +
     '</div>';
 
   /* ─── Mês: calendário mensal com reserva rápida ─── */
@@ -2546,6 +2564,18 @@ function renderBook(app){
     }
     html += '<div class="month-grid">'+cells+'</div>';
     html += '<div class="hint" style="margin-top:10px">Toca num dia para reservar '+(habitualValid()?'o teu lugar habitual':'um lugar')+' ou cancelar · F = feriado · dias fora do período de '+config.rules.maxAdvanceDays+' dias úteis não são reserváveis</div>';
+  }
+
+  if(tab==="remote"){
+    html += '<div class="adm-note" style="margin:0 0 10px">Marca os dias em que estás em teletrabalho — visível para a equipa. Um toque marca, outro desmarca.</div>';
+    days.forEach(d=>{
+      const on = isRemote(d.iso);
+      const cnt = Object.keys(remoteDays[d.iso]||{}).length;
+      html += '<div class="mybk-item"><div class="info">' +
+        '<div class="t">'+d.dow+', '+d.num+' '+d.mes+(d.iso===TODAY?' · hoje':'')+'</div>' +
+        '<div class="s">'+(on?'<span style="color:#1F6FEB; font-weight:700">🏠 em teletrabalho</span>':'<span style="color:#8B97A5">sem marcação</span>')+(cnt?' · '+cnt+' em remoto':'')+'</div>' +
+        '</div><div class="mybk-actions">'+(on?'<button class="btn-sm danger" onclick="toggleRemote(\''+d.iso+'\')">Desmarcar</button>':'<button class="btn-sm ok" onclick="toggleRemote(\''+d.iso+'\')">Marcar</button>')+'</div></div>';
+    });
   }
 
   if(tab==="week"){
@@ -2953,6 +2983,11 @@ function renderTeamList(){
       (people[b.name] = people[b.name] || []).push({iso:d.iso, dow:d.dow, num:d.num, office:(o?o.name:"")+tag});
     });
   });
+  days.forEach(d=>{
+    Object.keys(remoteDays[d.iso]||{}).forEach(n=>{
+      (people[n] = people[n] || []).push({iso:d.iso, dow:d.dow, num:d.num, office:"🏠 Teletrabalho", remote:true});
+    });
+  });
   const q = teamQuery.trim().toLowerCase();
   let names = Object.keys(people).filter(n=>!q || n.toLowerCase().includes(q));
   names.sort((a,b)=>{
@@ -2966,7 +3001,7 @@ function renderTeamList(){
   el.innerHTML = names.map(n=>{
     const isFav = favs.includes(n);
     const badges = people[n].sort((a,b)=>a.iso.localeCompare(b.iso))
-      .map(p=>'<span class="pbadge '+(p.iso===TODAY?"today":"")+'">'+p.dow+' '+p.num+' · '+esc(p.office)+'</span>').join("");
+      .map(p=>'<span class="pbadge '+(p.iso===TODAY?"today":"")+'"'+(p.remote?' style="background:#EEF0FA;color:#3B5BFF;border:1px solid #C9D2F2"':'')+'>'+p.dow+' '+p.num+' · '+esc(p.office)+'</span>').join("");
     return '<div class="person"><div class="ph"><span class="pn">'+esc(n)+(n===user?' <span style="color:var(--mist);font-size:12px">(tu)</span>':'')+'</span>' +
       (n!==user?'<button class="fav-btn" onclick="toggleFav(\''+esc(n).replace(/'/g,"\\'")+'\')" title="Favorito">'+(isFav?"⭐":"☆")+'</button>':'') +
       '</div><div class="pb">'+badges+'</div></div>';
@@ -3037,6 +3072,12 @@ function renderOcc(app){
         '<div class="occ-bars">'+cols+'</div></div>';
     });
     html += '</div>';
+    html += '<div class="occ-office" style="margin-top:12px"><div class="occ-title">🏠 Teletrabalho</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' +
+      daysArr.map(d=>{
+        const c = Object.keys(remoteDays[d.iso]||{}).length;
+        return '<span class="pbadge" style="'+(c?'background:#EEF0FA;color:#3B5BFF;border:1px solid #C9D2F2':'')+'">'+d.dow+' '+d.num+' · '+c+'</span>';
+      }).join("") + '</div></div>';
     html += '<div class="hint">Percentagem de lugares sentados reservados por dia (meias-jornadas contam como presença)</div>';
   }
 
@@ -3054,13 +3095,20 @@ function renderOcc(app){
         if(dateIso < TODAY && !b.checkedIn) s.noshow++;
       });
     });
+    Object.keys(remoteDays).forEach(iso=>{
+      if(iso < cutIso || iso > TODAY) return;
+      Object.keys(remoteDays[iso]).forEach(n=>{
+        const s = (stats[n] = stats[n] || {days:new Set(), noshow:0});
+        s.remote = (s.remote||0)+1;
+      });
+    });
     const names = Object.keys(stats).sort((a,b)=>stats[b].days.size - stats[a].days.size);
     html += '<div class="section-title">Utilização por pessoa · últimos 30 dias</div>';
     if(!names.length){
       html += '<div class="empty-box">Ainda não há histórico suficiente. Os dados vão acumulando à medida que a equipa usa a app.</div>';
     } else {
-      html += '<div class="occ-office"><table class="ptable"><tr><th>Colaborador</th><th class="r">Dias no escritório</th><th class="r">Sem check-in</th></tr>' +
-        names.map(n=>'<tr><td>'+(favs.includes(n)?"⭐ ":"")+esc(n)+'</td><td class="r">'+stats[n].days.size+'</td><td class="r">'+stats[n].noshow+'</td></tr>').join("") +
+      html += '<div class="occ-office"><table class="ptable"><tr><th>Colaborador</th><th class="r">Dias no escritório</th><th class="r">Teletrabalho</th><th class="r">Sem check-in</th></tr>' +
+        names.map(n=>'<tr><td>'+(favs.includes(n)?"⭐ ":"")+esc(n)+'</td><td class="r">'+stats[n].days.size+'</td><td class="r">'+(stats[n].remote||0)+'</td><td class="r">'+stats[n].noshow+'</td></tr>').join("") +
         '</table></div>' +
         '<div class="hint">«Sem check-in» conta reservas passadas em que não foi feito check-in na app — só é fiável se a equipa usar o check-in.</div>';
     }

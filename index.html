@@ -562,7 +562,7 @@ const D = {
   nav_mine:{pt:"Minhas Reservas",en:"My Bookings",es:"Mis Reservas"}, nav_mine_s:{pt:"Minhas",en:"Mine",es:"Mías"},
   nav_team:{pt:"Equipa",en:"Team",es:"Equipo"},
   nav_occ:{pt:"Ocupação",en:"Occupancy",es:"Ocupación"},
-  nav_adm:{pt:"Gestão",en:"Admin",es:"Gestión"},
+  nav_adm:{pt:"Administração",en:"Admin",es:"Gestión"},
   hello:{pt:"Olá",en:"Hi",es:"Hola"}, signout:{pt:"sair",en:"sign out",es:"salir"},
   free_seats:{pt:"Lugares Livres",en:"Free Desks",es:"Puestos Libres"},
   free_park:{pt:"Estacionamentos Livres",en:"Free Parking",es:"Plazas Libres"},
@@ -643,7 +643,7 @@ let tab = "map", occTab = "next";
 let attrFilter = "all";
 let teamQuery = "";
 let adminUnlocked = false;
-let adminName = "";      // quem entrou na Gestão
+let adminName = "";      // quem entrou na Administração
 let admPreview = false;
 function logAdmin(action){
   config.audit = config.audit || [];
@@ -916,7 +916,7 @@ function reportFault(spotId){
   if(note===null) return;
   faults[spotId] = {by:user, ts:Date.now(), note:(note||"avaria").slice(0,90)};
   saveAll(); renderModal(); render();
-  showToast("⚠️ Avaria reportada — a Gestão foi sinalizada");
+  showToast("⚠️ Avaria reportada — a Administração foi sinalizada");
 }
 function admFaultFix(spotId){
   if(!faults[spotId]) return;
@@ -1356,7 +1356,7 @@ function confirmModal(){
     if(v === config.pin || adm){
       adminUnlocked = true;
       adminName = adm ? adm.name : firstName(user)+" (mestre)";
-      logAdmin("entrou na Gestão");
+      logAdmin("entrou na Administração");
       saveAll();
       closeModal(); view="admin"; renderNav(); render();
     }
@@ -1423,7 +1423,7 @@ function renderModal(){
       N("ago", "Idiomas e modo escuro", "A app fala <b>PT, EN e ES</b>, e ganhou <b>modo escuro</b> com a paleta Digit — no canto inferior do menu.") +
       N("ago", "Perfil pessoal", "Matrícula, contacto e escritório principal em <b>Minhas Reservas → O meu perfil</b>. A matrícula aparece no teu carro no parque.") +
       N("ago", "Boleias entre escritórios", "Publica ou apanha <b>🚘 boleias</b> na secção Estacionamento — com o contacto do condutor.") +
-      N("ago", "Avarias e avisos", "Reporta <b>⚠️ avarias</b> no painel de cada lugar; a Gestão publica <b>📌 avisos</b> por escritório.") +
+      N("ago", "Avarias e avisos", "Reporta <b>⚠️ avarias</b> no painel de cada lugar; a Administração publica <b>📌 avisos</b> por escritório.") +
       N("ago", "Sugestões inteligentes", "\"Costumas vir às terças — reservar as próximas 4?\" A app aprende o teu padrão de presenças.") +
       N("ago", "Estatísticas e calendário", "Presenças do mês, reservas futuras e um <b>calendário</b> com as tuas marcações — nos botões do menu.") +
       '</div></div>';
@@ -1458,7 +1458,7 @@ function renderModal(){
         '<p>A <b>Semana</b> lista os próximos dias úteis com Reservar/Cancelar por dia. O <b>Mês</b> mostra o calendário sem feriados portugueses: um toque reserva, outro cancela — a estrela assinala os dias de equipa e o F os feriados.</p>' +
         '<p>No menu, o botão <b>Calendário</b> abre o mês num popup: o ponto azul marca os dias com reservas tuas.</p>') +
       SEC("check","Check-in e Minhas Reservas",
-        '<p>No dia da reserva, faz <b>check-in</b> em Minhas Reservas — confirma a presença. Sem check-in, o lugar pode ser <b>libertado automaticamente</b> à hora definida pela Gestão.</p>' +
+        '<p>No dia da reserva, faz <b>check-in</b> em Minhas Reservas — confirma a presença. Sem check-in, o lugar pode ser <b>libertado automaticamente</b> à hora definida pela Administração.</p>' +
         '<p>Em cada reserva tens o botão de calendário para o <b>Outlook/Teams</b> e, nas salas, o botão de ata para o <b>DigiNote</b>.</p>') +
       SEC("car","Estacionamento e boleias",
         '<p>Cada escritório tem o seu <b>parque com 2 lugares</b>. Toca numa baia livre para reservar — a tua fica azul com o nome e a <b>matrícula</b> do perfil. Lugares bloqueados com nome são <b>fixos</b> desse colaborador.</p>' +
@@ -1469,10 +1469,10 @@ function renderModal(){
       SEC("user","Perfil e preferências",
         '<p>Em Minhas Reservas → <b>O meu perfil</b>: fotografia, matrícula, contacto, email e escritório principal. No canto do menu: <b>modo escuro</b>, idioma <b>PT/EN/ES</b>, estatísticas pessoais, guardar e atualizar.</p>') +
       SEC("alert","Avarias e avisos",
-        '<p>Abre o painel de um lugar e toca em <b>Reportar avaria</b> — fica sinalizado no mapa e a Gestão vê a lista. Os <b>avisos</b> da Gestão aparecem no topo da vista Reservar.</p>') +
+        '<p>Abre o painel de um lugar e toca em <b>Reportar avaria</b> — fica sinalizado no mapa e a Administração vê a lista. Os <b>avisos</b> da Administração aparecem no topo da vista Reservar.</p>') +
       SEC("team","Equipa e Ocupação",
         '<p>Na <b>Equipa</b>, marca colegas como <b>favoritos</b> — a app sugere-te reservar quando eles têm lugar marcado. Na <b>Ocupação</b>: gráficos por escritório, histórico, presenças por pessoa e <b>mapa de calor</b> dos lugares.</p>') +
-      SEC("gear","Gestão (administradores)",
+      SEC("gear","Administração (administradores)",
         '<p>Com PIN: <b>editor de plantas</b> (lugares, paredes, diagonais, móveis, etiquetas dimensionadas), estacionamento, dias de equipa, regras, avisos, avarias, reservas com <b>CSV</b> e <b>relatório mensal PDF</b>, multi-administrador com registo, e exportar/importar.</p>') +
       SEC("send","Suporte",
         '<p>Ideias ou erros: botão <b>Sugestões</b> no menu ou <b>id@digit.com.pt</b>.</p>') +
@@ -3118,7 +3118,7 @@ function renderOcc(app){
   app.innerHTML = html;
 }
 
-/* ═══ Gestão ═══ */
+/* ═══ Administração ═══ */
 /* ── Pintura por arrasto e Anular ── */
 let admPainting = false, admStroke = {}, admStrokePushed = false, admHadDown = false;
 let admZone = null;        // {a:[r,c], b:[r,c]|null} — seleção de zona
@@ -3487,7 +3487,7 @@ function manualPrint(){
       '<li>O filtro 🪟 mostra apenas os lugares <b>à janela</b>.</li></ul>' +
       '<div class="tip">💡 Define o teu <b>★ lugar habitual</b> no painel de reserva — passa a existir um botão de reserva num só toque, e as vistas Semana/Mês usam-no automaticamente.</div>') +
     S(3, "Semana e Mês", '<p>O separador <b>Semana</b> lista os próximos dias úteis com um botão Reservar/Cancelar por dia. O <b>Mês</b> mostra o calendário completo (sem feriados portugueses): toca num dia para reservar, toca de novo para cancelar. ⭐ assinala dias de equipa e F feriados.</p>') +
-    S(4, "Check-in", '<p>No dia da reserva, vai a <b>Minhas Reservas</b> e faz <b>check-in</b> — confirma a tua presença. Se a Gestão ativar a libertação automática, lugares sem check-in até à hora definida voltam a ficar disponíveis para os colegas.</p>') +
+    S(4, "Check-in", '<p>No dia da reserva, vai a <b>Minhas Reservas</b> e faz <b>check-in</b> — confirma a tua presença. Se a Administração ativar a libertação automática, lugares sem check-in até à hora definida voltam a ficar disponíveis para os colegas.</p>') +
     S(5, "Estacionamento", '<ul>' +
       '<li>Cada escritório tem o seu <b>parque próprio com 2 lugares</b> — vê-o na secção Estacionamento do menu ou no separador dentro de Reservar.</li>' +
       '<li>Toca numa baia <b>livre</b> para reservar; a tua fica azul com o teu nome (e a <b>matrícula</b>, se a tiveres no perfil).</li>' +
@@ -3496,9 +3496,9 @@ function manualPrint(){
       '<li><b>🚘 Boleias:</b> quem vai de carro para outro escritório pode publicar uma boleia; os colegas juntam-se e recebem o contacto do condutor.</li></ul>') +
     S(6, "Salas de reuniões", '<p>Na secção <b>Sala Reuniões</b> vês as três salas com o dia em chips de horas (verde = livre). Toca numa sala, seleciona <b>várias horas seguidas</b>, escreve o assunto e reserva tudo de uma vez. Nas tuas reservas de sala tens 📅 (adicionar ao Outlook/Teams) e 📝 (criar a ata no DigiNote).</p>') +
     S(7, "O teu perfil", '<p>Em <b>Minhas Reservas → O meu perfil</b>: matrícula do carro, contacto (para boleias) e escritório principal (pré-selecionado ao abrir a app). No canto inferior do menu tens o <b>modo escuro</b> 🌙, o <b>idioma</b> PT/EN/ES, o <b>calendário</b> e as ferramentas (estatísticas pessoais, sugestões, guardar, atualizar).</p>') +
-    S(8, "Avarias e avisos", '<p>Monitor avariado? Cadeira partida? Abre o painel do lugar e toca em <b>⚠️ Reportar avaria</b> — o lugar fica sinalizado e a Gestão recebe a lista. Os <b>📌 avisos</b> publicados pela Gestão (ex.: obras) aparecem no topo da vista Reservar.</p>') +
+    S(8, "Avarias e avisos", '<p>Monitor avariado? Cadeira partida? Abre o painel do lugar e toca em <b>⚠️ Reportar avaria</b> — o lugar fica sinalizado e a Administração recebe a lista. Os <b>📌 avisos</b> publicados pela Administração (ex.: obras) aparecem no topo da vista Reservar.</p>') +
     S(9, "Equipa e Ocupação", '<p>Na <b>Equipa</b> procuras colegas e marcas ⭐ favoritos — a app avisa-te quando eles têm reserva ("a Margarida estará nas Laranjeiras"). Na <b>Ocupação</b> vês os gráficos por escritório, o histórico, as presenças por pessoa e o mapa de calor dos lugares.</p>') +
-    S(10, "Gestão (administradores)", '<p>Com PIN: editor de plantas (lugares, paredes, diagonais, móveis, etiquetas), estacionamento, dias de equipa, regras (antecedência, 1 lugar/dia, libertação automática), avisos, avarias, reservas de todos com exportação CSV e relatório mensal PDF, multi-administrador com registo de alterações, e exportar/importar da configuração.</p>') +
+    S(10, "Administração (administradores)", '<p>Com PIN: editor de plantas (lugares, paredes, diagonais, móveis, etiquetas), estacionamento, dias de equipa, regras (antecedência, 1 lugar/dia, libertação automática), avisos, avarias, reservas de todos com exportação CSV e relatório mensal PDF, multi-administrador com registo de alterações, e exportar/importar da configuração.</p>') +
     S(11, "Suporte", '<p>Ideias, problemas ou erros: usa o botão <b>Sugestões</b> (ícone ✈ no menu) ou escreve diretamente para <b>id@digit.com.pt</b>.</p>') +
     '</div></body></html>');
   w.document.close();
@@ -3644,7 +3644,7 @@ function admNoticeAdd(){
   const t = document.getElementById("ntText");
   if(!t || !t.value.trim()){ showToast("Escreve o aviso"); return; }
   config.notices = config.notices || {};
-  (config.notices[admOfficeId] = config.notices[admOfficeId] || []).unshift({ts:Date.now(), text:t.value.trim(), by:adminName||"Gestão"});
+  (config.notices[admOfficeId] = config.notices[admOfficeId] || []).unshift({ts:Date.now(), text:t.value.trim(), by:adminName||"Administração"});
   if(config.notices[admOfficeId].length > 6) config.notices[admOfficeId].length = 6;
   logAdmin("publicou aviso em "+getOffice(admOfficeId).name);
   t.value = "";
@@ -3699,7 +3699,7 @@ function renderAdmin(app){
   ];
 
   let html = headerHtml(false) + '<main>' +
-    '<div class="section-title" style="margin-top:2px; display:flex; justify-content:space-between; align-items:center">Gestão · área de administração' +
+    '<div class="section-title" style="margin-top:2px; display:flex; justify-content:space-between; align-items:center">Administração · área de administração' +
     '<button class="btn-sm" onclick="admTogglePreview()">'+(admPreview?"✎ Voltar ao editor":"👁 Pré-visualizar")+'</button></div>';
 
   if(admPreview){

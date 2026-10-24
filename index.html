@@ -3007,10 +3007,27 @@ function pfPhotoDel(){
   const p = profiles[user];
   if(p && p.photo){ delete p.photo; saveAll(); renderNav(); render(); showToast("Fotografia removida"); }
 }
+function dfInstall(){ const F=(function(){ var F=window.digitFotos; if(F) return F;
+ F={porEmail:{},porNome:{},pronto:false,_cb:[]};
+ F.onReady=function(f){ if(F.pronto){ try{f();}catch(e){} } else F._cb.push(f); };
+ F.email=function(e){ return F.porEmail[String(e||"").trim().toLowerCase()]||""; };
+ F.nome=function(n){ return F.porNome[String(n||"").trim().toLowerCase()]||""; };
+ window.digitFotos=F;
+ try{ var c=JSON.parse(localStorage.getItem("digitFotosCache")||"null"); if(c){ F.porEmail=c.e||{}; F.porNome=c.n||{}; } }catch(e){}
+ var U="https://aucnnpvdbvqwijamjokm.supabase.co", K="sb_publishable_oMc9Ls4Te9w5MlkuTiuMaQ_pRaEaF1j", tok=K;
+ try{ var ss=JSON.parse(localStorage.getItem("sb-aucnnpvdbvqwijamjokm-auth-token")||"null"); var at=ss&&(ss.access_token||(ss.currentSession&&ss.currentSession.access_token)); if(at) tok=at; }catch(e){}
+ fetch(U+"/rest/v1/rpc/digit_equipa",{method:"POST",headers:{apikey:K,Authorization:"Bearer "+tok,"Content-Type":"application/json"},body:"{}"})
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(rows){ if(!Array.isArray(rows)) return; var e={},n={},ce={},cn={}; rows.forEach(function(r){ if(!r||!r.foto) return; var em=String(r.email||"").toLowerCase(), nm=String(r.nome||"").trim().toLowerCase(); if(em) e[em]=r.foto; if(nm) n[nm]=r.foto; if(String(r.foto).slice(0,5)!=="data:"){ if(em) ce[em]=r.foto; if(nm) cn[nm]=r.foto; } }); F.porEmail=e; F.porNome=n; try{ localStorage.setItem("digitFotosCache", JSON.stringify({e:ce,n:cn})); }catch(x){} })
+  .catch(function(){})
+  .then(function(){ F.pronto=true; var cb=F._cb; F._cb=[]; cb.forEach(function(f){ try{f();}catch(x){} }); });
+ return F; })(); if(!F.pronto && !window._dfwDS){ window._dfwDS=1; F.onReady(()=>{ try{ if(user){ renderNav(); render(); } }catch(e){} }); } return F; }
 function avatarHtml(name, cls){
   const p = profiles[name];
-  return (p && p.photo)
-    ? '<img class="'+cls+'" src="'+p.photo+'" alt="">'
+  const F = dfInstall();
+  const ph = F.nome(name) || ((name===user && authEmail) ? F.email(authEmail) : "") || (p && p.photo) || "";
+  return ph
+    ? '<img class="'+cls+'" src="'+esc(ph)+'" alt="" style="object-fit:cover">'
     : '<span class="'+cls+'">'+esc(initialsOf(name))+'</span>';
 }
 function saveProfileForm(){

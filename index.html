@@ -1831,15 +1831,18 @@ async function verificarConta(em){
     if(error || !data) return {ok:true};            /* erro de ligação nunca bloqueia */
     const r = Array.isArray(data) ? data[0] : data;
     if(!r) return {ok:true};
-    return { ok: r.ativo !== false, nome: String(r.nome||"").trim() };
+    const bl = Array.isArray(r.apps_bloqueadas) && r.apps_bloqueadas.indexOf("digispot") >= 0;
+    if(r.ativo === false) return { ok:false, msg:"A tua conta está desativada. Fala com a administração." };
+    if(bl) return { ok:false, msg:"Não tens acesso ao DigiSpot. Fala com a administração." };
+    return { ok: true, nome: String(r.nome||"").trim() };
   }catch(e){ return {ok:true}; }
 }
-async function bloquearConta(){
+async function bloquearConta(msg){
   try{ if(SB) await SB.auth.signOut(); }catch(e){}
   user=""; authEmail=""; _nomeDigit=""; adminUnlocked=false; view="book";
   localStorage.removeItem(LS_USER); localStorage.removeItem(LS_EMAIL);
   renderNav(); render();
-  showToast("A tua conta está desativada. Fala com a administração.");
+  showToast(msg || "A tua conta está desativada. Fala com a administração.");
 }
 function _isObj(v){ return v && typeof v === "object" && !Array.isArray(v); }
 function _dsStamp(node, nm, em){
@@ -1905,7 +1908,7 @@ async function enterAs(n, em){
   let names = {}; try{ names = JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
   const _full = fullEmail(em);
   const _chk = await verificarConta(_full);
-  if(!_chk.ok){ await bloquearConta(); return; }
+  if(!_chk.ok){ await bloquearConta(_chk.msg); return; }
   _nomeDigit = _chk.nome || "";
   names[em] = n; localStorage.setItem(LS_NAMES, JSON.stringify(names));
   user = n; localStorage.setItem(LS_USER, n);
@@ -2001,7 +2004,7 @@ async function restoreSession(){
       let names={}; try{ names=JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
       names[(u.email||"").split("@")[0]] = user; localStorage.setItem(LS_NAMES, JSON.stringify(names));
       const _chk = await verificarConta(authEmail);
-      if(!_chk.ok){ await bloquearConta(); return; }
+      if(!_chk.ok){ await bloquearConta(_chk.msg); return; }
       _nomeDigit = _chk.nome || "";
     } else {
       user = ""; localStorage.removeItem(LS_USER);

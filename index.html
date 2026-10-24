@@ -698,7 +698,7 @@ let authEmail = localStorage.getItem(LS_EMAIL) || "";
 function normName(n){ return String(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 function canSeeAdmin(){
   const local = (authEmail||"").split("@")[0];
-  return local==="id" || local==="goncalo.vieira" || normName(user)==="goncalo vieira" || normName(user)==="id";
+  return local==="id" || local==="goncalo.vieira" || local==="gvieira" || normName(user)==="goncalo vieira" || normName(user)==="id";
 }
 let view = "book";
 let officeId = "lrj", admOfficeId = "lrj";
@@ -1822,12 +1822,96 @@ function saveLoginPrefs(em){
     localStorage.setItem(LS_LOGIN, JSON.stringify({email:em}));
   else localStorage.removeItem(LS_LOGIN);
 }
+/* ── Conta única Digit: conta ativa (B) + identidade pelo email (C) ── */
+let _nomeDigit = "";
+async function verificarConta(em){
+  if(!SB || !em) return {ok:true};
+  try{
+    const { data, error } = await SB.rpc('digit_perfil', { p_email: em });
+    if(error || !data) return {ok:true};            /* erro de ligação nunca bloqueia */
+    const r = Array.isArray(data) ? data[0] : data;
+    if(!r) return {ok:true};
+    return { ok: r.ativo !== false, nome: String(r.nome||"").trim() };
+  }catch(e){ return {ok:true}; }
+}
+async function bloquearConta(){
+  try{ if(SB) await SB.auth.signOut(); }catch(e){}
+  user=""; authEmail=""; _nomeDigit=""; adminUnlocked=false; view="book";
+  localStorage.removeItem(LS_USER); localStorage.removeItem(LS_EMAIL);
+  renderNav(); render();
+  showToast("A tua conta está desativada. Fala com a administração.");
+}
+function _isObj(v){ return v && typeof v === "object" && !Array.isArray(v); }
+function _dsStamp(node, nm, em){
+  if(!node || typeof node !== "object") return false;
+  let ch = false;
+  if(Array.isArray(node)){ node.forEach(v=>{ if(_dsStamp(v,nm,em)) ch=true; }); return ch; }
+  for(const k of Object.keys(node)){
+    const v = node[k];
+    if(typeof v === "string" && v === nm && k.indexOf("_em_")!==0 && node["_em_"+k] === undefined){ node["_em_"+k] = em; ch = true; }
+    if(_isObj(v) && k === nm && v._emk === undefined){ v._emk = em; ch = true; }
+    if(v && typeof v === "object" && _dsStamp(v,nm,em)) ch = true;
+  }
+  return ch;
+}
+function _dsHeal(node, em, novo, olds){
+  if(!node || typeof node !== "object") return false;
+  let ch = false;
+  if(Array.isArray(node)){ node.forEach(v=>{ if(_dsHeal(v,em,novo,olds)) ch=true; }); return ch; }
+  for(const k of Object.keys(node)){
+    if(k.indexOf("_em_")===0 && node[k] === em){
+      const f = k.slice(4);
+      if(typeof node[f] === "string" && node[f] !== novo){ olds.add(node[f]); node[f] = novo; ch = true; }
+    }
+  }
+  for(const k of Object.keys(node)){
+    const v = node[k];
+    if(_isObj(v) && v._emk === em && k !== novo){ olds.add(k); if(!(novo in node)) node[novo] = v; delete node[k]; ch = true; }
+  }
+  for(const k of Object.keys(node)){ const v = node[k]; if(v && typeof v === "object" && _dsHeal(v,em,novo,olds)) ch = true; }
+  return ch;
+}
+function _dsStr(node, olds, novo){
+  if(!node || typeof node !== "object") return false;
+  let ch = false;
+  if(Array.isArray(node)){
+    node.forEach((v,i)=>{ if(typeof v === "string" && olds.has(v)){ node[i] = novo; ch = true; } else if(v && typeof v === "object" && _dsStr(v,olds,novo)) ch = true; });
+    return ch;
+  }
+  for(const k of Object.keys(node)){ const v = node[k]; if(v && typeof v === "object" && _dsStr(v,olds,novo)) ch = true; }
+  return ch;
+}
+async function ligarIdentidade(legado){
+  try{
+    if(!authEmail || !legado) return;
+    const em = authEmail;
+    const cols = [bookings, waitlist, profiles, faults, rides, remoteDays];
+    let ch = false;
+    cols.forEach(c=>{ if(_dsStamp(c, legado, em)) ch = true; });
+    const novo = _nomeDigit || legado;
+    const olds = new Set();
+    cols.forEach(c=>{ if(_dsHeal(c, em, novo, olds)) ch = true; });
+    olds.delete(novo);
+    if(olds.size) cols.forEach(c=>{ if(_dsStr(c, olds, novo)) ch = true; });
+    if(novo !== user){
+      user = novo; localStorage.setItem(LS_USER, novo);
+      try{ const names = JSON.parse(localStorage.getItem(LS_NAMES))||{}; names[em.split("@")[0]] = novo; localStorage.setItem(LS_NAMES, JSON.stringify(names)); }catch(e){}
+    }
+    /* Só grava se os dados vieram mesmo da nuvem — nunca sobrepor a nuvem com dados locais antigos */
+    if(ch && window.__cloudOk === true) await saveAll();
+  }catch(e){ console.warn("[DigiSpot] identidade:", e); }
+}
 async function enterAs(n, em){
   let names = {}; try{ names = JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
+  const _full = fullEmail(em);
+  const _chk = await verificarConta(_full);
+  if(!_chk.ok){ await bloquearConta(); return; }
+  _nomeDigit = _chk.nome || "";
   names[em] = n; localStorage.setItem(LS_NAMES, JSON.stringify(names));
   user = n; localStorage.setItem(LS_USER, n);
-  authEmail = String(em||"").toLowerCase(); localStorage.setItem(LS_EMAIL, authEmail);
+  authEmail = _full; localStorage.setItem(LS_EMAIL, authEmail);
   await loadAll();
+  await ligarIdentidade(n);
   if(profiles[user] && profiles[user].defaultOffice && getOffice(profiles[user].defaultOffice)) officeId = profiles[user].defaultOffice;
   renderNav(); render();
 }
@@ -1916,6 +2000,9 @@ async function restoreSession(){
       authEmail = (u.email||"").toLowerCase(); localStorage.setItem(LS_EMAIL, authEmail);
       let names={}; try{ names=JSON.parse(localStorage.getItem(LS_NAMES))||{}; }catch(e){}
       names[(u.email||"").split("@")[0]] = user; localStorage.setItem(LS_NAMES, JSON.stringify(names));
+      const _chk = await verificarConta(authEmail);
+      if(!_chk.ok){ await bloquearConta(); return; }
+      _nomeDigit = _chk.nome || "";
     } else {
       user = ""; localStorage.removeItem(LS_USER);
     }
@@ -3938,6 +4025,7 @@ function renderAdmin(app){
   });
   await restoreSession();
   await loadAll();
+  if(user) await ligarIdentidade(user);
   if(user && profiles[user] && profiles[user].defaultOffice && getOffice(profiles[user].defaultOffice)) officeId = profiles[user].defaultOffice;
   dateSel = getDays()[0].iso;
   runAutoRelease();
